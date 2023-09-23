@@ -6,7 +6,10 @@ String dep = getParameter("dep");
 String name = getParameter("name");
 String email = getParameter("email");
 byte[] imageDataUrl = javax.xml.bind.DatatypeConverter.parseBase64Binary(getParameter("imageDataUrl"));
-String time = datetime.getTime("yy/mm/dd/h:m:s");
+String base64Image = Base64.getEncoder().encodeToString(imageDataUrl);
+String today=datetime.getToday("yy/mm/dd");
+String time=datetime.getTime("h:m:s");
+String date = today + " " + time;  
 
 Vector paras = new Vector();
 paras.addElement("[varchar]");
@@ -14,38 +17,29 @@ Vector res = t.callFromPool("sp_Get_cardID", paras);
 String cardID = (String)(res.elementAt(0));
 
 try{
-	//新增ID+使用者輸入資料進資歷庫
+	//新增ID+使用者輸入資料進資料庫
 	String nowStr = getNow();
 	String strSQL = "INSERT INTO Card (senderdep,sender,sendermail,dep,name,email,date,pic,id) values (?,?,?,?,?,?,?,?,?)";
-	t.execFromPool(strSQL, new Object[]{senderdep,sender,sendermail,dep,name,email,time,imageDataUrl,cardID});
-	
-	//找到那筆資料
-	String[][] mails = t.queryFromPool("select pic from card where id = ?", new Object[]{cardID});
-	// 將二進制資料轉換為BufferedImage
-	byte[] binaryImageData =  javax.xml.bind.DatatypeConverter.parseBase64Binary(mails[0][0]);
-	ByteArrayInputStream bis = new ByteArrayInputStream(binaryImageData);
-	BufferedImage bufferedImage = ImageIO.read(bis);
-	
-	//將BufferedImage轉換為Base64編碼的字串
-	ByteArrayOutputStream bos = new ByteArrayOutputStream();
-	ImageIO.write(bufferedImage, "png", bos);
-	byte[] imageBytes = bos.toByteArray();
-	String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-	
+	t.execFromPool(strSQL, new Object[]{senderdep,sender,sendermail,dep,name,email,date,imageDataUrl,cardID});
+
+ 
 	//信件內容
 	StringBuilder content = new StringBuilder();
 	content.append("<h3><span style=\"font-size:18px\">2023感恩小卡來啦!!感謝有你 期待2024(´,,•ω•,,)♡<br/>")
 		   .append("<img src='data:image/png;base64," + base64Image + "'/>");
+     
 	
 	//寄信設定
 	String host = "smtp-relay.gmail.com";   		
 	String from = "dmsys_serv@children.org.tw";	 	
 	String[] bcc = new String[]{email};   
-	System.out.println(mails[0][1]+"***************************");	
+	System.out.println(bcc+"***************");
 	String subject = "2023感恩歡樂送ε٩(๑> ₃ <)۶з";
 	String[] filename = null;
 	String filepath = "";
 	String content_type = "text/html; charset=utf-8";   
+
+ 	//看有沒有寄信成功 沒有就繼續 重複三次
 	boolean success = false;
 	int maxRetries = 3;
 	int retryCount = 0;
